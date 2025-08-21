@@ -1,4 +1,4 @@
-#!/system/bin/sh
+#!/bin/bash
 # ==========================================================
 #  DalsottoSS – Android Anti-Cheat Scanner
 #  Credits: Kiwi
