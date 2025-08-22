@@ -1,7 +1,7 @@
 #!/system/bin/sh
 # ==========================================================
-#  DalsottoSS – Android Anti-Cheat Scanner
-#  Credits: Kiwi
+#  Scanner da Morro – Android Anti-Cheat Scanner
+#  Credits: Dudu e Dalsotto
 # ==========================================================
 
 # Cores
@@ -13,8 +13,8 @@ WARN="${Y}[ALERTA]${N}"
 clear
 echo -e "${B}"
 echo "╔═══════════════════════════════════════╗"
-echo "║         🔎 DalsottoSS Scanner         ║"
-echo "║             Credits: Kiwi             ║"
+echo "║        🔎 Scanner da Morro            ║"
+echo "║        Credits: Dudu e Dalsotto       ║"
 echo "╚═══════════════════════════════════════╝"
 echo -e "${N}"
 sleep 1
@@ -84,5 +84,6 @@ fi
 
 # Final
 echo -e "\n${B}═══════════════════════════════════════${N}"
-echo -e "   ✔️ Scan Finalizado - DalsottoSS"
+echo -e "   ✔️ Scan Finalizado - Scanner da Morro"
+echo -e "      Créditos: Dudu e Dalsotto"
 echo -e "${B}═══════════════════════════════════════${N}\n"
