@@ -1,40 +1,59 @@
 #!/bin/bash
 
-# Painel Scanner Android
-# Autor: SSdalsotto
+# Função para exibir o cabeçalho do painel
+display_header() {
+    clear
+    echo "===================================="
+    echo "        Scanner Android Panel"
+    echo "          Autor: SSdalsotto"
+    echo "===================================="
+}
 
-clear
-echo "====================="
-echo "  Scanner Android"
-echo "  Autor: SSdalsotto"
-echo "====================="
-echo "Escolha uma opção:"
-echo "1) Free Fire"
-echo "2) Free Fire Max"
-echo "0) Sair"
-echo "====================="
+# Função para instalar pacotes necessários
+install_dependencies() {
+    echo "Instalando dependências..."
+    pkg install git php android-tools -y
+    echo "Dependências instaladas com sucesso!"
+}
 
-# Função para escolher a opção
-read -p "Digite o número da opção: " option
+# Função para clonar o repositório e rodar o script
+clone_and_run() {
+    echo "Removendo repositório antigo (se houver)..."
+    rm -rf SSdalsotto
 
-case $option in
-    1)
-        echo "Iniciando o scanner do Free Fire..."
-        # Coloque o comando para iniciar o scanner do Free Fire aqui
-        # Exemplo:
-        # ./scanner_freefire.sh
-        ;;
-    2)
-        echo "Iniciando o scanner do Free Fire Max..."
-        # Coloque o comando para iniciar o scanner do Free Fire Max aqui
-        # Exemplo:
-        # ./scanner_freefire_max.sh
-        ;;
-    0)
-        echo "Saindo..."
-        exit 0
-        ;;
-    *)
-        echo "Opção inválida, tente novamente."
-        ;;
-esac
+    echo "Clonando o repositório SSdalsotto..."
+    git clone https://github.com/SSdalsotto/SSdalsotto.git
+
+    cd SSdalsotto
+
+    echo "Executando o script PHP..."
+    php dalsottoss.php
+}
+
+# Exibindo o menu
+menu() {
+    display_header
+    echo "Escolha uma opção:"
+    echo "1) Instalar dependências e rodar o script"
+    echo "2) Sair"
+    echo "===================================="
+    read -p "Digite o número da opção: " option
+
+    case $option in
+        1)
+            install_dependencies
+            clone_and_run
+            ;;
+        2)
+            echo "Saindo do painel. Até logo!"
+            exit 0
+            ;;
+        *)
+            echo "Opção inválida. Tente novamente."
+            menu
+            ;;
+    esac
+}
+
+# Chama o menu para exibir ao usuário
+menu
