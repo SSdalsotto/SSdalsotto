@@ -4,37 +4,62 @@
 exibir_painel() {
   clear
   echo -e "\e[1;34m##############################"
-  echo -e "#        Scanner Android      #"
-  echo -e "##############################"
-  echo -e "# Autores: Negão e Dalsotto  #"
-  echo -e "# Créditos: Twonine e Phzin  #"
+  echo -e "#       Scanner Android      #"
+  echo -e "#  Autores: Negão e Dalsotto  #"
+  echo -e "#  Créditos: Twonine e Phzin  #"
   echo -e "##############################"
   echo -e "\e[0m"
-  echo -e "Escolha uma opção:"
-  echo -e "1) Parear ADB"
-  echo -e "2) Free Fire Normal"
-  echo -e "3) Free Fire Max"
-  echo -e "4) Sair"
+  echo -e "Escolha uma das opções abaixo:"
+  echo -e "[0] Instalar Módulos (Atualizar e instalar módulos)"
+  echo -e "[1] Escanear FreeFire Normal"
+  echo -e "[2] Escanear FreeFire Max"
+  echo -e "[3] Sair"
+}
+
+# Função para instalar módulos
+instalar_modulos() {
+  echo -e "Atualizando e instalando módulos..."
+  # Comandos para atualizar e instalar módulos
+  pkg update -y && pkg upgrade -y
+  pkg install adb git php android-tools -y
+  echo -e "Módulos instalados com sucesso!"
 }
 
 # Função para parear ADB
 parear_adb() {
-  echo -e "Iniciando o pareamento ADB..."
-  adb devices
   echo -e "Conecte o dispositivo via USB e pressione qualquer tecla para continuar..."
   read -n 1
+  adb devices
 }
 
 # Função para Free Fire Normal
 free_fire_normal() {
   echo -e "Iniciando o Free Fire Normal..."
   # Comando para Free Fire Normal (ajustar conforme necessário)
-  echo -e "Abrindo Free Fire Normal..."
-  # Exemplo: termux-open-url "https://play.google.com/store/apps/details?id=com.dts.freefireth"
+  termux-open-url "https://play.google.com/store/apps/details?id=com.dts.freefireth"
 }
 
 # Função para Free Fire Max
 free_fire_max() {
+  echo -e "Iniciando o Free Fire Max..."
+  # Comando para Free Fire Max (ajustar conforme necessário)
+  termux-open-url "https://play.google.com/store/apps/details?id=com.dts.freefiremax"
+}
+
+# Loop principal
+while true; do
+  exibir_painel
+  read -p "Escolha uma opção (0-3): " opcao
+  case $opcao in
+    0) instalar_modulos ;;
+    1) free_fire_normal ;;
+    2) free_fire_max ;;
+    3) exit 0 ;;
+    *) echo -e "Opção inválida! Tente novamente." ;;
+  esac
+  echo -e "Pressione qualquer tecla para continuar..."
+  read -n 1
+donefree_fire_max() {
   echo -e "Iniciando o Free Fire Max..."
   # Comando para Free Fire Max (ajustar conforme necessário)
   echo -e "Abrindo Free Fire Max..."
