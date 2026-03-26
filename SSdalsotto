@@ -1,40 +1,566 @@
-#!/bin/bash
+<?php
 
-# Função para exibir o painel
-exibir_painel() {
-  clear
-  echo -e "\e[1;34m##############################"
-  echo -e "#       Scanner Android      #"
-  echo -e "#  Autores: Negão e Dalsotto  #"
-  echo -e "#  Créditos: Twonine e Phzin  #"
-  echo -e "##############################"
-  echo -e "\e[0m"
-  echo -e "Escolha uma das opções abaixo:"
-  echo -e "[0] Instalar Módulos (Atualizar e instalar módulos)"
-  echo -e "[1] Escanear FreeFire Normal"
-  echo -e "[2] Escanear FreeFire Max"
-  echo -e "[3] Sair"
+declare(strict_types=1);
+
+
+const C = [
+    'rst'      => "\e[0m",
+    'bold'     => "\e[1m",
+    'branco'   => "\e[97m",
+    'cinza'    => "\e[37m",
+    'preto'    => "\e[30m\e[1m",
+    'vermelho' => "\e[91m",
+    'verde'    => "\e[92m",
+    'fverde'   => "\e[32m",
+    'amarelo'  => "\e[93m",
+    'laranja'  => "\e[38;5;208m",
+    'azul'     => "\e[34m",
+    'ciano'    => "\e[36m",
+    'magenta'  => "\e[35m",
+];
+
+
+
+function c(string ...$nomes): string
+{
+    return implode('', array_map(fn($n) => C[$n] ?? '', $nomes));
 }
 
-# Função para instalar módulos
-instalar_modulos() {
-  echo -e "Atualizando e instalando módulos..."
-  # Comandos para atualizar e instalar módulos
-  pkg update -y && pkg upgrade -y
-  pkg install adb git php android-tools -y
-  echo -e "Módulos instalados com sucesso!"
+function rst(): string
+{
+    return C['rst'];
 }
 
-# Função para parear ADB
-parear_adb() {
-  echo -e "Conecte o dispositivo via USB e pressione qualquer tecla para continuar..."
-  read -n 1
-  adb devices
+function linha(string $cor, string $icone, string $texto): void
+{
+    echo c('bold', $cor) . "  $icone $texto\n" . rst();
 }
 
-# Função para Free Fire Normal
-free_fire_normal() {
-  echo -e "Iniciando o Free Fire Normal..."
+function ok(string $texto): void     { linha('verde',    '✓', $texto); }
+function erro(string $texto): void   { linha('vermelho', '✗', $texto); }
+function aviso(string $texto): void  { linha('amarelo',  '⚠', $texto); }
+function info(string $texto): void   { linha('fverde',   'ℹ', $texto); }
+function detalhe(string $texto): void
+{
+    echo c('bold', 'amarelo') . "    $texto\n" . rst();
+}
+
+function secao(int $num, string $titulo): void
+{
+    $sep = str_repeat('─', mb_strlen($titulo) + 4);
+    echo "\n" . c('bold', 'azul') . "  ► [$num] $titulo\n  $sep\n" . rst();
+}
+
+function cabecalho(string $titulo): void
+{
+    echo "\n" . c('bold', 'ciano') . "  $titulo\n  " . str_repeat('=', mb_strlen($titulo)) . "\n\n" . rst();
+}
+
+function inputUsuario(string $mensagem): void
+{
+    echo c('rst', 'bold', 'ciano') . "  ▸ $mensagem: " . c('fverde');
+}
+
+
+function kellerBanner(): void
+{
+    echo c('branco') . "
+  " . c('branco') . "KellerSS Android " . c('ciano') . "Fucking Cheaters" . c('branco') . "
+  " . c('cinza') . "discord.gg/allianceoficial" . c('branco') . "
+
+  )       (     (          (
+  ( /(       )\ )  )\ )       )\ )
+  )\()) (   (()/( (()/(  (   (()/(
+  |((_)\  )\   /(_)) /(_)) )\   /(_))
+  |_ ((_)((_) (_))  (_))  ((_) (_))
+  | |/ / | __|| |   | |   | __|| _ \\
+  ' <  | _| | |__ | |__ | _| |   /
+  _|\_\\ |___||____||____||___||_|_\\
+
+  " . c('ciano') . "Coded By: KellerSS | Credits: Sheik" . rst() . "\n\n";
+}
+
+
+
+function garantirPermissoesBinarios(): void
+{
+    $binarios = [
+        '/data/data/com.termux/files/usr/bin/adb',
+        '/data/data/com.termux/files/usr/bin/clear',
+    ];
+    foreach ($binarios as $bin) {
+        if (file_exists($bin)) {
+            @chmod($bin, 0755);
+        }
+    }
+}
+
+
+
+function adb(string $cmd): string
+{
+    return trim((string) shell_exec($cmd . ' 2>/dev/null'));
+}
+
+
+
+function statTimestamps(string $caminho): ?array
+{
+    $raw = adb('adb shell "stat ' . escapeshellarg($caminho) . '"');
+    if (empty($raw)) return null;
+
+    $limpar = fn(string $v): string => trim(preg_replace('/ [+-]\d{4}$/', '', $v));
+
+    preg_match('/Access: (.*?)\n/', $raw, $mA);
+    preg_match('/Modify: (.*?)\n/', $raw, $mM);
+    preg_match('/Change: (.*?)\n/', $raw, $mC);
+
+    if (!isset($mA[1], $mM[1], $mC[1])) return null;
+
+    return [
+        'access' => $limpar($mA[1]),
+        'modify' => $limpar($mM[1]),
+        'change' => $limpar($mC[1]),
+    ];
+}
+
+
+function atualizar(): void
+{
+    echo "\n" . c('bold', 'azul') . "  ┌─ KELLERSS UPDATER\n" . rst();
+    echo c('vermelho') . "  ⟳ Atualizando, aguarde...\n\n" . rst();
+    system('git fetch origin && git reset --hard origin/master && git clean -f -d');
+    echo c('bold', 'fverde') . "  ✓ Atualização concluída! Reinicie o scanner\n" . rst();
+    exit;
+}
+
+
+
+function verificarDispositivoADB(): bool
+{
+    garantirPermissoesBinarios();
+
+    $output  = (string) shell_exec('adb devices');
+    $linhas  = array_slice(explode("\n", trim($output)), 1);
+    $devices = [];
+
+    foreach ($linhas as $linha) {
+        $linha = trim($linha);
+        if (!empty($linha) && strpos($linha, 'device') !== false) {
+            $partes = preg_split('/\s+/', $linha);
+            if (isset($partes[0])) {
+                $devices[] = $partes[0];
+            }
+        }
+    }
+
+    $total = count($devices);
+
+    if ($total === 0) {
+        erro("Nenhum dispositivo encontrado.");
+        erro("Faça o pareamento de IP ou conecte um dispositivo via USB.");
+        exit(1);
+    }
+
+    if ($total > 1) {
+        erro("Mais de um dispositivo/emulador conectado.");
+        erro("Desconecte os outros dispositivos e mantenha apenas um.");
+        foreach ($devices as $dev) {
+            echo "    - $dev\n";
+        }
+        exit(1);
+    }
+
+    shell_exec('adb shell "chmod 755 /data/data/com.termux/files/usr/bin/clear 2>/dev/null"');
+    return true;
+}
+
+
+function detectarBypassShell(): bool
+{
+    $bypassDetectado   = false;
+    $totalVerificacoes = 0;
+    $problemasTotal    = 0;
+
+    cabecalho('ANÁLISE COMPLETA DE SEGURANÇA DO DISPOSITIVO');
+
+    secao(1, 'VERIFICANDO DISPOSITIVO CONECTADO');
+
+    $devices = adb('adb devices');
+    if (empty($devices) || strpos($devices, 'device') === false || strpos($devices, 'unauthorized') !== false) {
+        erro("Nenhum dispositivo detectado ou sem autorização!");
+        return false;
+    }
+
+    $check = adb('adb shell "ls /sdcard"');
+    if (strpos($check, 'Permission denied') !== false) {
+        erro("ADB sem permissões suficientes!");
+        return false;
+    }
+
+    ok("Dispositivo conectado com permissões adequadas");
+
+    secao(2, 'VERIFICANDO ESTADO DE BOOT VERIFICADO');
+
+    $bootState = adb('adb shell getprop ro.boot.verifiedbootstate');
+    $totalVerificacoes++;
+
+    match ($bootState) {
+        'yellow' => (function () use (&$bypassDetectado, &$problemasTotal) {
+            aviso("Boot State: YELLOW — Suspeita de modificação no sistema");
+            $bypassDetectado = true; $problemasTotal++;
+        })(),
+        'orange' => (function () use (&$bypassDetectado, &$problemasTotal) {
+            erro("Boot State: ORANGE — Bootloader desbloqueado detectado");
+            $bypassDetectado = true; $problemasTotal++;
+        })(),
+        'green'  => ok("Boot State: GREEN — Sistema verificado"),
+        default  => aviso("Boot State: $bootState (Desconhecido)"),
+    };
+
+
+    secao(3, 'VERIFICANDO STATUS DO SELINUX');
+
+    $selinux = adb('adb shell getenforce');
+    $totalVerificacoes++;
+
+    match ($selinux) {
+        'Permissive' => (function () use (&$bypassDetectado, &$problemasTotal) {
+            erro("SELinux: PERMISSIVE — Modo permissivo detectado (comum em dispositivos rooteados)");
+            $bypassDetectado = true; $problemasTotal++;
+        })(),
+        'Enforcing'  => ok("SELinux: ENFORCING — Modo de segurança ativo"),
+        default      => aviso("SELinux: $selinux (Status desconhecido)"),
+    };
+
+
+    secao(4, 'VERIFICANDO PROPRIEDADES DO SISTEMA');
+
+    $propriedades = [
+        'ro.debuggable'           => ['1',        'Modo debug ativado'],
+        'ro.secure'               => ['0',        'Segurança desativada'],
+        'service.adb.root'        => ['1',        'ADB root ativo'],
+        'ro.build.selinux'        => ['0',        'SELinux desabilitado'],
+        'ro.boot.flash.locked'    => ['0',        'Flash desbloqueado'],
+        'ro.boot.veritymode'      => ['disabled', 'dm-verity desabilitado'],
+        'sys.oem_unlock_allowed'  => ['1',        'OEM unlock permitido'],
+        'persist.sys.usb.config'  => ['adb',      'ADB persistente ativo'],
+        'ro.kernel.qemu'          => ['1',        'Emulador detectado'],
+    ];
+
+    foreach ($propriedades as $prop => [$valorSuspeito, $descricao]) {
+        $valor = adb("adb shell getprop " . escapeshellarg($prop));
+        if ($valor === $valorSuspeito) {
+            erro("Propriedade suspeita: $prop = $valor ($descricao)");
+            $bypassDetectado = true;
+            $problemasTotal++;
+        }
+        $totalVerificacoes++;
+    }
+
+    ok("Verificação de propriedades concluída");
+
+    secao(5, 'VERIFICANDO BINÁRIOS SU (SUPERUSUÁRIO)');
+
+    $binariosSU = [
+        '/system/bin/su', '/system/xbin/su', '/sbin/su', '/system/su',
+        '/system/bin/.ext/.su', '/data/local/su', '/data/local/bin/su',
+        '/data/local/xbin/su', '/su/bin/su', '/system/sbin/su',
+        '/vendor/bin/su', '/system/app/Superuser.apk',
+        '/data/adb/magisk', '/data/adb/ksu', '/data/adb/ap',
+        '/cache/su', '/dev/com.koushikdutta.superuser.daemon',
+    ];
+
+    $suEncontrado = false;
+    foreach ($binariosSU as $bin) {
+        $r = adb('adb shell "test -f ' . escapeshellarg($bin) . ' && echo FOUND || echo NOTFOUND"');
+        if ($r === 'FOUND') {
+            erro("Binário SU encontrado: $bin");
+            $bypassDetectado = true;
+            $suEncontrado    = true;
+            $problemasTotal++;
+        }
+        $totalVerificacoes++;
+    }
+
+    if (!$suEncontrado) ok("Nenhum binário SU encontrado");
+
+
+    secao(6, 'DETECÇÃO AVANÇADA DE MAGISK');
+
+    $magiskDetectado = false;
+
+    $pkgs = adb(
+        'adb shell "found=; for p in com.topjohnwu.magisk io.github.huskydg.magisk io.github.magisk; do' .
+        ' r=\$(pm path \"\$p\" 2>/dev/null); case \"\$r\" in package:*) found=\"\$found|\$p\";; esac; done; echo \"\$found\""'
+    );
+    if (!empty(trim($pkgs, "| \n"))) {
+        erro("Pacote Magisk encontrado:");
+        detalhe(trim($pkgs, "| \n"));
+        $bypassDetectado = $magiskDetectado = true;
+        $problemasTotal++;
+    }
+
+    foreach (['/data/adb/magisk', '/sbin/.magisk', '/data/adb/modules', '/cache/magisk.log'] as $dir) {
+        $r = adb('adb shell "test -e ' . escapeshellarg($dir) . ' && echo FOUND || echo NOTFOUND"');
+        if ($r === 'FOUND') {
+            erro("Diretório/arquivo Magisk encontrado: $dir");
+            $bypassDetectado = $magiskDetectado = true;
+            $problemasTotal++;
+        }
+        $totalVerificacoes++;
+    }
+
+   
+    $procs = adb(
+        'adb shell "found=; for f in /proc/[0-9]*/comm; do' .
+        ' [ -r \"\$f\" ] || continue; read -r n < \"\$f\" 2>/dev/null;' .
+        ' case \"\$n\" in *magisk*|*magiskd*) found=\"\$found|\$n\";; esac;' .
+        ' done; echo \"\$found\""'
+    );
+    if (!empty(trim($procs, "| \n"))) {
+        erro("Processo Magisk em execução:");
+        detalhe(trim($procs, "| \n"));
+        $bypassDetectado = $magiskDetectado = true;
+        $problemasTotal++;
+    }
+
+  
+    $mounts = adb(
+        'adb shell "found=; while IFS= read -r line; do' .
+        ' case \"\$line\" in *magisk*) found=\"\$line\"; break;; esac;' .
+        ' done < /proc/mounts; echo \"\$found\""'
+    );
+    if (!empty($mounts)) {
+        erro("Mountpoint Magisk detectado:");
+        detalhe($mounts);
+        $bypassDetectado = $magiskDetectado = true;
+        $problemasTotal++;
+    }
+
+    if (!$magiskDetectado) ok("Nenhum vestígio de Magisk encontrado");
+
+
+    secao(7, 'DETECÇÃO DE KERNELSU');
+
+    $ksuDetectado = false;
+
+   
+    $kmod = adb(
+        'adb shell "found=; while IFS= read -r line; do' .
+        ' case \"\$line\" in *[Kk]ernel[Ss][Uu]*|*ksu_*) found=\"\$line\"; break;; esac;' .
+        ' done < /proc/modules; echo \"\$found\""'
+    );
+    if (!empty($kmod)) {
+        erro("Módulo KernelSU no kernel:");
+        detalhe($kmod);
+        $bypassDetectado = $ksuDetectado = true;
+        $problemasTotal++;
+    }
+
+    foreach (['/data/adb/ksud', '/data/adb/ksu', '/proc/kernelsu'] as $file) {
+        $r = adb('adb shell "test -e ' . escapeshellarg($file) . ' && echo FOUND || echo NOTFOUND"');
+        if ($r === 'FOUND') {
+            erro("Arquivo/diretório KernelSU encontrado: $file");
+            $bypassDetectado = $ksuDetectado = true;
+            $problemasTotal++;
+        }
+        $totalVerificacoes++;
+    }
+
+ 
+    $kver = adb('adb shell "read -r ver < /proc/version 2>/dev/null; case \"\$ver\" in *ksu*|*KSU*|*KernelSU*|*Ethereal*|*EliteKernel*|*Sultan*|*OPlus-KSU*) echo \"\$ver\";; esac"');
+    if (!empty($kver)) {
+        erro("Kernel com suporte a KernelSU detectado:");
+        detalhe($kver);
+        $bypassDetectado = $ksuDetectado = true;
+        $problemasTotal++;
+    }
+
+    $ksuLog = adb('adb shell "logcat -d -b kernel 2>/dev/null | grep -m5 -iE \'KernelSU:\' | head -5"');
+    if (!empty(trim($ksuLog))) {
+        erro("KernelSU ativo detectado via kernel log:");
+        foreach (array_filter(explode("\n", $ksuLog)) as $ksuLinha) {
+            detalhe(trim($ksuLinha));
+        }
+        $bypassDetectado = $ksuDetectado = true;
+        $problemasTotal++;
+    }
+
+   
+    $ksuSysPkg = adb('adb shell "logcat -d -b main 2>/dev/null | grep -E \'Missing required system package.*but found with extended search\' | grep -vE \'(instagram|discord|whatsapp|facebook|tiktok|snapchat|twitter|spotify|youtube|netflix|google|amazon|microsoft|samsung|motorola|termux|telegram|com\\.android\\.)\' | sort -u | head -3"');
+    if (!empty(trim($ksuSysPkg))) {
+        foreach (array_filter(explode("\n", $ksuSysPkg)) as $linha) {
+            if (preg_match('/Missing required system package:\s*(\S+),/', $linha, $mPkg)) {
+                erro("Manager root disfarçado detectado (system package): {$mPkg[1]}");
+                $bypassDetectado = $ksuDetectado = true;
+                $problemasTotal++;
+            }
+        }
+    }
+
+  
+    $ksuSpoofedVer = adb('adb shell "dumpsys package 2>/dev/null | awk \'/Package \\[/{pkg=\$0} /versionName=.*spoofed/{print pkg; print \$0}\' | head -10"');
+    if (!empty(trim($ksuSpoofedVer))) {
+        $ksuSpPkg = '';
+        foreach (array_filter(explode("\n", $ksuSpoofedVer)) as $spLinha) {
+            if (preg_match('/Package \[([^\]]+)\]/', $spLinha, $mSp)) {
+                $ksuSpPkg = $mSp[1];
+            } elseif (!empty($ksuSpPkg) && preg_match('/versionName=(\S+)/', $spLinha, $mVer)) {
+                erro("Manager root com nome falso detectado: $ksuSpPkg (versão: {$mVer[1]})");
+                $bypassDetectado = $ksuDetectado = true;
+                $problemasTotal++;
+                $ksuSpPkg = '';
+            }
+        }
+    }
+
+   
+    $ksuBatPkg = adb('adb shell "dumpsys batterystats 2>/dev/null | grep -oE \'pkginst=3[0-9]{4}:\"[^\"]+\"\' | grep -vE \'(com\\.google\\.|com\\.android\\.|com\\.samsung\\.|android\\.)\' | sort -u | head -5"');
+    if (!empty(trim($ksuBatPkg))) {
+        foreach (array_filter(explode("\n", $ksuBatPkg)) as $bpLinha) {
+            if (preg_match('/pkginst=(\d+):"([^"]+)"/', $bpLinha, $mBp)) {
+                erro("Manager root detectado via batterystats (versionCode={$mBp[1]}): {$mBp[2]}");
+                $bypassDetectado = $ksuDetectado = true;
+                $problemasTotal++;
+            }
+        }
+    }
+
+  
+    $ksuBusybox = adb('adb shell "dumpsys cpuinfo 2>/dev/null | grep -m3 \'/data/adb/ksu/\' | head -3"');
+    if (!empty(trim($ksuBusybox))) {
+        erro("Processo KernelSU ativo em CPU stats:");
+        foreach (array_filter(explode("\n", $ksuBusybox)) as $bbLinha) {
+            detalhe(trim($bbLinha));
+        }
+        $bypassDetectado = $ksuDetectado = true;
+        $problemasTotal++;
+    }
+
+    
+    $znSockets = adb('adb shell "cat /proc/net/unix 2>/dev/null | grep -oE \'@zn_(init|global|zygote|log)_[A-Za-z0-9]+\' | sort -u | head -5"');
+    if (!empty(trim($znSockets))) {
+        erro("Sockets APatch Trick detectados no sistema:");
+        foreach (array_filter(explode("\n", $znSockets)) as $znSock) {
+            detalhe(trim($znSock));
+        }
+        $bypassDetectado = $ksuDetectado = true;
+        $problemasTotal++;
+    }
+
+   
+    $suSeCtx = adb('adb shell "ps -A -Z 2>/dev/null | grep -E \'^u:r:su:s0\' | grep -vE \'(com\\.android\\.|surfaceflinger|webview_zygote)\' | awk \'{print \$NF}\' | sort -u | head -8"');
+    if (!empty(trim($suSeCtx))) {
+        erro("Processos com contexto root SELinux (u:r:su:s0) detectados:");
+        foreach (array_filter(explode("\n", $suSeCtx)) as $suProc) {
+            detalhe(trim($suProc));
+        }
+        $bypassDetectado = $ksuDetectado = true;
+        $problemasTotal++;
+    }
+
+  
+    $susfsKernel = adb('adb shell "{ test -d /proc/sys/fs/susfs && echo FOUND; } || { test -d /sys/kernel/security/susfs && echo FOUND; } || echo NOTFOUND"');
+    if ($susfsKernel === 'FOUND') {
+        erro("SuSFS detectado no kernel — ocultação ativa de processos e arquivos de root");
+        $bypassDetectado = $ksuDetectado = true;
+        $problemasTotal++;
+    }
+
+   
+    $origBins = adb('adb shell "found=; for b in dumpsys logcat dumpstate bugreport; do [ -f /system/bin/\${b}_original ] && found=\"\$found|\$b\"; done; echo \"\$found\""');
+    $origBins = trim($origBins, "| \n");
+    if (!empty($origBins)) {
+        foreach (array_filter(explode('|', $origBins)) as $origBin) {
+            $origBin = trim($origBin);
+            erro("Binário do sistema substituído por wrapper de filtragem: /system/bin/$origBin (original renomeado para {$origBin}_original)");
+        }
+        $bypassDetectado = $ksuDetectado = true;
+        $problemasTotal++;
+    }
+
+   
+    $dumpsysHdr = adb('adb shell "dd if=/system/bin/dumpsys bs=2 count=1 2>/dev/null | od -c 2>/dev/null | head -1"');
+    if (!empty($dumpsysHdr) && strpos($dumpsysHdr, '#') !== false && strpos($dumpsysHdr, '!') !== false) {
+        erro("Wrapper de filtragem detectado: /system/bin/dumpsys substituído por shell script (dumpsys real é binário ELF)");
+        $bypassDetectado = $ksuDetectado = true;
+        $problemasTotal++;
+    }
+
+    if (!$ksuDetectado) ok("Nenhum vestígio de KernelSU encontrado");
+
+
+    secao(8, 'DETECÇÃO DE APATCH');
+
+    $apatchDetectado = false;
+
+    $apPkgs = adb(
+        'adb shell "found=; for p in me.bmax.apatch me.bmax.apatch.release; do' .
+        ' r=\$(pm path \"\$p\" 2>/dev/null); case \"\$r\" in package:*) found=\"\$found|\$p\";; esac; done; echo \"\$found\""'
+    );
+    if (!empty(trim($apPkgs, "| \n"))) {
+        erro("Pacote APatch encontrado:");
+        detalhe(trim($apPkgs, "| \n"));
+        $bypassDetectado = $apatchDetectado = true;
+        $problemasTotal++;
+    }
+
+    if (adb('adb shell "test -d /data/adb/ap && echo FOUND || echo NOTFOUND"') === 'FOUND') {
+        erro("Diretório APatch encontrado: /data/adb/ap");
+        $bypassDetectado = $apatchDetectado = true;
+        $problemasTotal++;
+    }
+
+   
+    $apProp = adb(
+        'adb shell "getprop 2>/dev/null | { found=; while IFS= read -r l; do' .
+        ' case \"\$l\" in *[Aa]patch*) found=\"\$l\"; break;; esac;' .
+        ' done; echo \"\$found\"; }"'
+    );
+    if (!empty($apProp)) {
+        erro("Propriedade APatch encontrada:");
+        detalhe($apProp);
+        $bypassDetectado = $apatchDetectado = true;
+        $problemasTotal++;
+    }
+
+    if (!$apatchDetectado) ok("Nenhum vestígio de APatch encontrado");
+
+
+    secao(9, 'ANÁLISE DE LOGS DO KERNEL E SISTEMA');
+
+   
+    $logChecks = [
+        'Logcat Kernel'     =>
+            'adb shell "logcat -b kernel -d 2>/dev/null |' .
+            ' { while IFS= read -r l; do case \"\$l\" in' .
+            ' *kernelsu*|*KernelSU*|*magisk*|*Magisk*|*apatch*|*APatch*)' .
+            ' printf \'%s\\n\' \"\$l\"; break;; esac; done; }"',
+
+        'Dumpsys Package'   =>
+            'adb shell "dumpsys package 2>/dev/null |' .
+            ' { while IFS= read -r l; do case \"\$l\" in' .
+            ' *kernelsu*|*KernelSU*|*magisk*|*Magisk*|*apatch*|*APatch*)' .
+            ' case \"\$l\" in *queriesPackages*|*KernelSupport*|*Freecess*|*ChinaPolicy*) ;;' .
+            ' *) printf \'%s\\n\' \"\$l\"; break;; esac;; esac; done; }"',
+
+        'Dumpsys Activity'  =>
+            'adb shell "dumpsys activity 2>/dev/null |' .
+            ' { while IFS= read -r l; do case \"\$l\" in' .
+            ' *kernelsu*|*KernelSU*|*magisk*|*Magisk*|*apatch*|*APatch*)' .
+            ' case \"\$l\" in *queriesPackages*|*KernelSupport*|*Freecess*|*ChinaPolicy*) ;;' .
+            ' *) printf \'%s\\n\' \"\$l\"; break;; esac;; esac; done; }"',
+
+        'Dumpsys Processes' =>
+            'adb shell "dumpsys activity processes 2>/dev/null |' .
+            ' { while IFS= read -r l; do case \"\$l\" in' .
+            ' *kernelsu*|*KernelSU*|*magisk*|*Magisk*|*apatch*|*APatch*)' .
+            ' printf \'%s\\n\' \"\$l\"; break;; esac; done; }"',
+    ];
+
+    $logDetectado = false;
+    foreach ($logChecks as $n  echo -e "Iniciando o Free Fire Normal..."
   # Comando para Free Fire Normal (ajustar conforme necessário)
   termux-open-url "https://play.google.com/store/apps/details?id=com.dts.freefireth"
 }
